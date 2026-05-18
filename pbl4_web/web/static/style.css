@@ -1,0 +1,185 @@
+/* RESET */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Poppins", sans-serif;
+}
+
+/* ===== LOGIN PAGE ===== */
+.login-body {
+  height: 100vh;
+  background: radial-gradient(circle at top left, #ff6600, #111);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.glass {
+  backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 16px;
+  box-shadow: 0 0 25px rgba(255,140,0,0.3);
+}
+
+.login-container {
+  width: 400px;
+  padding: 40px;
+  text-align: center;
+  color: #fff;
+}
+.login-container h1 {
+  color: orange;
+  margin-bottom: 30px;
+}
+.input-group {
+  position: relative;
+  margin: 25px 0;
+}
+.input-group input {
+  width: 100%;
+  padding: 12px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid #888;
+  color: white;
+  outline: none;
+  font-size: 1rem;
+}
+.input-group label {
+  position: absolute;
+  left: 0;
+  top: 12px;
+  color: #aaa;
+  transition: 0.3s;
+}
+.input-group input:focus + label,
+.input-group input:valid + label {
+  top: -10px;
+  font-size: 0.8rem;
+  color: orange;
+}
+.login-container button {
+  background: linear-gradient(45deg, #ff6600, #ff9900);
+  border: none;
+  padding: 12px 30px;
+  border-radius: 8px;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.3s;
+}
+.login-container button:hover {
+  box-shadow: 0 0 15px orange;
+}
+.error { color: red; margin-top: 10px; }
+
+/* ===== DASHBOARD ===== */
+.dashboard-body {
+  background: #0c0c0c;
+  color: #fff;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* NAVBAR */
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 40px;
+  background: rgba(255, 140, 0, 0.15);
+  border-bottom: 1px solid rgba(255, 140, 0, 0.3);
+}
+.logout-btn {
+  background: linear-gradient(45deg, #ff3300, #cc0000);
+  padding: 8px 16px;
+  border-radius: 8px;
+  text-decoration: none;
+  color: white;
+  font-weight: bold;
+}
+.logout-btn:hover { box-shadow: 0 0 12px red; }
+
+/* CONTAINER */
+.dashboard-container {
+  display: flex;
+  height: calc(100vh - 60px);
+  padding: 20px;
+  gap: 20px;
+}
+
+/* LEFT SIDE */
+.main-left {
+  flex: 7;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 15px;
+  border-radius: 16px;
+}
+.cam-view {
+  flex: 8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#cam-feed {
+  width: 100%;
+  border-radius: 10px;
+  box-shadow: 0 0 25px rgba(255,140,0,0.5);
+}
+.status-panel {
+  flex: 2;
+  text-align: center;
+  padding: 15px;
+  border-top: 1px solid rgba(255,140,0,0.3);
+}
+#status-box {
+  margin-top: 10px;
+  font-size: 1.5rem;
+  border-radius: 10px;
+  padding: 10px 20px;
+  color: white;
+  font-weight: bold;
+  transition: 0.3s;
+}
+#status-box.safe {
+  background: linear-gradient(90deg, #00cc66, #00994d);
+  box-shadow: 0 0 15px #00ff88;
+}
+#status-box.fire {
+  background: linear-gradient(90deg, #ff3300, #ff6600);
+  box-shadow: 0 0 25px #ff3300;
+}
+
+/* RIGHT SIDE */
+.main-right {
+  flex: 3;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+}
+.main-right h3 {
+  text-align: center;
+  color: orange;
+  margin-bottom: 10px;
+}
+.cam-list {
+  flex: 1;
+  list-style: none;
+  overflow-y: auto;
+  padding-right: 5px;
+}
+.cam-list li {
+  margin: 10px 0;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  transition: 0.3s;
+}
+.cam-list li:hover {
+  background: rgba(255,140,0,0.3);
+  transform: scale(1.02);
+}

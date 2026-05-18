@@ -1,0 +1,16 @@
+<h2>Sửa tài khoản: {{ u.username }}</h2>
+
+<form method="post">
+    {% csrf_token %}
+    
+    <label>Email:</label>
+    <input type="email" name="email" value="{{ u.email }}" required>
+
+    <label>Vai trò:</label>
+    <select name="role">
+        <option value="admin" {% if u.role == "admin" %}selected{% endif %}>Admin</option>
+        <option value="user" {% if u.role == "user" %}selected{% endif %}>User</option>
+    </select>
+
+    <button class="btn">Lưu</button>
+</form>

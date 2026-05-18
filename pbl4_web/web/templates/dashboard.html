@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Bảng điều khiển PCCC AI</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="dashboard-body">
+
+<header class="navbar glass">
+  <h2>🚒 PCCC AI Dashboard</h2>
+  <a href="/logout" class="logout-btn">Đăng xuất</a>
+</header>
+
+<div class="dashboard-container">
+  <!-- Bên trái -->
+  <div class="main-left glass">
+    <div class="cam-view">
+      <img src="/video_feed" id="cam-feed">
+    </div>
+    <div class="status-panel">
+      <h3>Trạng thái hệ thống</h3>
+      <div id="status-box">Đang tải...</div>
+    </div>
+  </div>
+
+  <!-- Bên phải -->
+  <div class="main-right glass">
+    <h3>📹 Danh sách Camera</h3>
+    <ul class="cam-list">
+      <li>🔴 Camera 1 — Phòng chính</li>
+      <li>🟢 Camera 2 — Hành lang</li>
+      <li>🟡 Camera 3 — Kho</li>
+      <li>🔵 Camera 4 — Cổng</li>
+      <li>⚪ Camera 5 — Sân thượng</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+async function updateStatus() {
+  const res = await fetch('/api/status');
+  const data = await res.json();
+  const box = document.getElementById("status-box");
+  if (data.fire) {
+    box.textContent = "🔥 PHÁT HIỆN CHÁY!";
+    box.className = "fire";
+  } else {
+    box.textContent = "✅ AN TOÀN";
+    box.className = "safe";
+  }
+}
+setInterval(updateStatus, 1500);
+</script>
+
+</body>
+</html>

@@ -1,0 +1,66 @@
+body {
+    background: #f0f2f5;
+    font-family: Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+}
+
+.auth-container {
+    width: 360px;
+    padding: 30px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    text-align: center;
+}
+
+h1 {
+    margin-bottom: 20px;
+}
+
+.input-group {
+    text-align: left;
+    margin-bottom: 15px;
+}
+
+.input-group label {
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.input-group input {
+    width: 100%;
+    padding: 10px;
+    margin-top: 5px;
+    border-radius: 6px;
+    border: 1px solid #c8c8c8;
+}
+
+.btn {
+    width: 100%;
+    padding: 10px;
+    font-size: 15px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.btn.primary {
+    background: #3498db;
+    color: white;
+}
+
+.switch-link {
+    margin-top: 15px;
+}
+
+.error {
+    background: #e74c3c;
+    padding: 10px;
+    border-radius: 6px;
+    color: white;
+    margin-bottom: 10px;
+}

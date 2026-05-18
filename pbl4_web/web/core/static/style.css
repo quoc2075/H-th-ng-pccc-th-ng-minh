@@ -1,0 +1,7 @@
+/* Dùng khi muốn style chung thêm */
+.text-center { text-align: center; }
+.mt-10 { margin-top: 10px; }
+.mt-20 { margin-top: 20px; }
+.bg-red { background: #e74c3c; color: white; }
+.bg-green { background: #2ecc71; color: white; }
+.rounded { border-radius: 8px; }

@@ -1,0 +1,36 @@
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>🔥 Giám sát cháy AI</title>
+  <style>
+    body { background: #111; color: white; text-align: center; font-family: Arial; }
+    h1 { color: orange; margin-top: 20px; }
+    #status { font-size: 1.8rem; margin-top: 10px; }
+    img { width: 720px; margin-top: 20px; border-radius: 10px; }
+  </style>
+</head>
+<body>
+  <h1>🔥 HỆ THỐNG NHẬN DIỆN CHÁY AI</h1>
+  <div id="status">Đang tải...</div>
+  <img src="/video_feed">
+
+  <script>
+    async function updateStatus() {
+      const res = await fetch('/api/status');
+      const data = await res.json();
+      const st = document.getElementById('status');
+      if (data.fire) {
+        st.innerHTML = "🔥 Phát hiện cháy!";
+        st.style.color = "red";
+      } else {
+        st.innerHTML = "✅ An toàn";
+        st.style.color = "lightgreen";
+      }
+    }
+    setInterval(updateStatus, 1500);
+  </script>
+  
+</body>
+</html>

@@ -1,0 +1,753 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>PCCC — ADMIN</title>
+    <link rel="stylesheet" href="{% static 'dashboard.css' %}">
+</head>
+
+<body>
+
+<!-- ================================
+     BẢNG 1 — FULL PAGE LAYOUT
+================================ -->
+<div class="page-layout">
+
+<!-- ================================
+     HÀNG 1 — APPBAR (15%)
+================================ -->
+<header class="appbar">
+    <h1>HỆ THỐNG GIÁM SÁT PCCC — ADMIN</h1>
+
+    <nav class="top-menu">
+        <button class="btn" type="button" onclick="showPanel('user')"> Quản lý User</button>
+        <button class="btn" type="button" onclick="showPanel('history')"> Lịch sử Alert</button>
+        <button class="btn" type="button" onclick="showPanel('device')"> Điều khiển thiết bị</button>
+
+    </nav>
+
+    <form action="{% url 'logout' %}">
+        <button class="btn">Đăng xuất</button>
+    </form>
+</header>
+
+<!-- ================================
+     HÀNG 2 — DASHBOARD (85%)
+================================ -->
+<main class="dashboard">
+
+    <!-- =======================================================
+         CỘT TRÁI (70%) — LEFT
+         BẢNG 3: CAMERA (80%) + BANNER (20%)
+    ======================================================= -->
+    <section class="left">
+
+        <!-- CAMERA ZONE (80%) -->
+        <div class="camera-wrapper">
+            <h2 class="section-title"> Camera giám sát</h2>
+
+            <article class="cam-card" style="height:100%;">
+                <div class="cam-view">
+                    <img class="cam-img" src="{% url 'opencv_mjpeg_stream' %}">
+                    style="width:100%; height:100%; object-fit:cover; display:block; margin:0; padding:0;">
+                </div>
+            </article>
+        </div>
+
+        <!-- BANNER ZONE (20%) -->
+        <div class="banner-wrapper">
+            <h2 class="section-title"> Trạng thái hệ thống</h2>
+
+            <div class="safe-banner" id="safeBanner"
+                 {% if ai_status != "safe" %}style="display:none"{% endif %}>
+                🟢 HỆ THỐNG AN TOÀN — AI không phát hiện cháy
+                <small id="safeTime" style="display:block;font-size:0.8em;margin-top:5px;"></small>
+            </div>
+
+            <div class="danger-banner" id="dangerBanner"
+                 {% if ai_status == "safe" %}style="display:none"{% endif %}>
+                🔥🔴 CẢNH BÁO CHÁY — AI phát hiện nguy hiểm!
+                <small id="fireTime" style="display:block;font-size:0.8em;margin-top:5px;"></small>
+            </div>
+        </div>
+
+    </section>
+
+    <!-- =======================================================
+         CỘT PHẢI (30%) — RIGHT
+         (User Panel + Alert History)
+    ======================================================= -->
+    <aside class="right">
+
+
+        <!-- ===================================================
+             PANEL QUẢN LÝ USER
+        =================================================== -->
+        <div id="panel-user" class="panel-section">
+            <div class="panel">
+                <h2 class="section-title">👥 Quản lý tài khoản (ADMIN)</h2>
+
+                <form method="post" action="/dashboard/user/add/" style="margin-bottom:20px;">
+                    {% csrf_token %}
+                    <h3>Tạo tài khoản</h3>
+
+                    <input type="text" name="username" placeholder="Username" required class="input">
+                    <input type="password" name="password" placeholder="Password" required class="input">
+                    <input type="email" name="email" placeholder="Email" class="input">
+
+                    <select name="role" class="input">
+                        <option value="admin">Admin</option>
+                        <option value="user" selected>User</option>
+                    </select>
+
+                    <label style="margin-top:5px;display:block;">
+                        <input type="checkbox" name="can_view_cam">
+                        Cho phép xem camera
+                    </label>
+
+                    <button class="btn small">Tạo</button>
+                </form>
+
+                <input
+                    id="userSearch"
+                    class="search-input"
+                    type="text"
+                    placeholder="Tìm theo username hoặc email..."
+                    oninput="filterUserList()"
+                >
+
+                <div class="scrollable-list" style="max-height:350px;">
+                    <table class="data" id="userTable">
+                        <tr>
+                            <th>Username</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Thao tác</th>
+                        </tr>
+
+                        {% for u in users %}
+                        <tr class="user-row" id="row-{{ u.id }}">
+                            <td class="username">{{ u.username }}</td>
+                            <td class="email">{{ u.email }}</td>
+                            <td>{{ u.role }}</td>
+                            <td>
+                                <button class="btn small"
+                                        onclick="toggleEdit({{ u.id }}, '{{ u.email }}', '{{ u.role }}', {{ u.can_view_cam|yesno:'true,false' }})">
+                                    Sửa
+                                </button>
+
+                                <form method="post" action="{% url 'admin_user_delete' u.id %}"
+                                      style="display:inline-block; margin-left:6px;"
+                                      onsubmit="return confirm('Xóa người dùng này?');">
+                                    {% csrf_token %}
+                                    <button class="btn small" style="background:red">Xóa</button>
+                                </form>
+                            </td>
+                        </tr>
+
+                        <!-- FORM EDIT USER -->
+                        <tr id="edit-{{ u.id }}" style="display:none;">
+                            <td colspan="4">
+                                <form method="post" action="/dashboard/user/{{ u.id }}/edit/">
+                                    {% csrf_token %}
+
+                                    <input type="email" name="email" id="email-{{ u.id }}" required>
+
+                                    <input type="password" name="password" placeholder="Mật khẩu (để trống nếu không đổi)">
+
+                                    <select name="role" id="role-{{ u.id }}">
+                                        <option value="admin">Admin</option>
+                                        <option value="user">User</option>
+                                    </select>
+
+                                    <label style="display:block;margin-top:10px;">
+                                        <input type="checkbox" name="can_view_cam" id="can_view_cam_{{ u.id }}">
+                                        Cho phép xem camera
+                                    </label>
+
+                                    <button class="btn small" style="background:green;">Lưu</button>
+                                    <button type="button" class="btn small"
+                                            onclick="toggleEdit({{ u.id }})">
+                                        Hủy
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+
+                        {% endfor %}
+                    </table>
+                </div>
+
+            </div>
+        </div>
+        
+
+
+
+        <!-- ===================================================
+             PANEL LỊCH SỬ ALERT
+        =================================================== -->
+        <div id="panel-history" class="panel-section" style="display:none;">
+            <div class="panel">
+
+                <h2 class="section-title"> Lịch sử cảnh báo</h2>
+
+                <div class="date-range">
+                    <input type="date" id="dateStart" onchange="filterAlertHistory()">
+                    <input type="date" id="dateEnd" onchange="filterAlertHistory()">
+                </div>
+
+                <input id="alertSearch" class="search-input"
+                       placeholder="Tìm theo loại hoặc nội dung..."
+                       oninput="filterAlertHistory()">
+
+                <button class="btn small" style="margin-bottom:10px;"
+                        onclick="refreshAlertList(true)">
+                     Làm mới
+                </button>
+
+                <div id="history-list" class="scrollable-list">
+                    {% for a in alerts %}
+                    <div class="alert-item history-row">
+                        <strong class="cls">{{ a.cls }}</strong> — {{ a.confidence|floatformat:2 }}
+                        <br>
+                        <small class="created-at">{{ a.created_at|date:"H:i:s d/m/Y" }}</small>
+                    </div>
+                    {% endfor %}
+                </div>
+
+            </div>
+        </div>
+        <!--điều khiển-->
+        <div id="panel-device" class="panel-section" style="display:none;">
+            <div class="panel">
+                <h2 class="section-title">🔧 Điều khiển thiết bị</h2>
+
+                <!-- ITEM: ĐÈN + CÒI (CHUNG RELAY 1) -->
+                <div class="device-row">
+                    <span class="device-label">💡🔊 Đèn + Còi</span>
+                    <label class="switch">
+                        <input type="checkbox" onchange="toggleDevice('light_buzzer', this.checked)">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <!-- ITEM: MÁY BƠM (RELAY 2) -->
+                <div class="device-row">
+                    <span class="device-label">💧 Máy bơm</span>
+                    <label class="switch">
+                        <input type="checkbox" onchange="toggleDevice('pump', this.checked)">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+    </aside>
+
+</main>
+
+</div> <!-- end page-layout -->
+
+<!-- 🔥 SSE WITH AUTO-RECONNECT + DEBOUNCE -->
+<script>
+console.log("🔥 Initializing SSE with auto-reconnect...");
+
+const safeBanner = document.getElementById("safeBanner");
+const dangerBanner = document.getElementById("dangerBanner");
+const debugInfo = document.getElementById("debugInfo");
+const safeTime = document.getElementById("safeTime");
+const fireTime = document.getElementById("fireTime");
+
+// State management
+let eventLog = [];
+let currentState = "{{ ai_status }}"; // Initial state from backend
+let evtSource = null;
+let reconnectAttempts = 0;
+let maxReconnectAttempts = 10;
+let reconnectDelay = 1000; // Start with 1s
+
+// 🔥 DEBOUNCE: Tránh state thay đổi quá nhanh
+let stateDebounceTimer = null;
+const DEBOUNCE_DELAY = 100; // 1 second
+
+function logEvent(msg) {
+    const timestamp = new Date().toLocaleTimeString() + '.' + new Date().getMilliseconds();
+    const logMsg = `[${timestamp}] ${msg}`;
+    console.log(logMsg);
+    eventLog.push(logMsg);
+    if (eventLog.length > 15) eventLog.shift();
+    if (debugInfo) {
+        debugInfo.innerHTML = eventLog.join('<br>');
+    }
+}
+
+function updateUI(newState) {
+    if (newState === currentState) {
+        logEvent(`⚠️ State unchanged (${newState}), skipping UI update`);
+        return;
+    }
+    
+    logEvent(`🔄 Updating UI: ${currentState} → ${newState}`);
+    currentState = newState;
+    
+    const startTime = performance.now();
+    
+    if (newState === "fire") {
+        if (safeBanner && dangerBanner) {
+            safeBanner.style.display = "none";
+            dangerBanner.style.display = "block";
+            fireTime.textContent = `Cảnh báo lúc: ${new Date().toLocaleTimeString()}`;
+            
+            const endTime = performance.now();
+            logEvent(`✅ FIRE UI updated (${(endTime - startTime).toFixed(2)}ms)`);
+            
+            // Play alarm (với error handling)
+            playAlarm();
+        }
+    } else if (newState === "safe") {
+        if (dangerBanner && safeBanner) {
+            dangerBanner.style.display = "none";
+            safeBanner.style.display = "block";
+            safeTime.textContent = `An toàn lúc: ${new Date().toLocaleTimeString()}`;
+            
+            const endTime = performance.now();
+            logEvent(`✅ SAFE UI updated (${(endTime - startTime).toFixed(2)}ms)`);
+        }
+    }
+}
+
+function playAlarm() {
+    try {
+        // Tạo beep sound bằng Web Audio API nếu file không tồn tại
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.frequency.value = 800; // Hz
+        oscillator.type = 'sine';
+        
+        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.5);
+        
+        logEvent("🔊 Alarm beep played");
+    } catch(e) {
+        logEvent(`⚠️ Audio error: ${e.message}`);
+    }
+}
+
+function connectSSE() {
+    if (evtSource) {
+        evtSource.close();
+    }
+    
+    logEvent(`🔄 Connecting SSE (attempt ${reconnectAttempts + 1})...`);
+    
+    evtSource = new EventSource("{% url 'sse_alerts' %}");
+    
+    evtSource.onopen = function() {
+        logEvent("✅ SSE CONNECTED");
+        reconnectAttempts = 0;
+        reconnectDelay = 1000;
+    };
+    
+    evtSource.onmessage = function(event){
+    const state = event.data.trim();
+
+    if (state === "heartbeat") {
+        return;
+    }
+
+    logEvent(`📨 SSE: "${state}" received`);
+
+    // 🔥 Khi có FIRE → load lại lịch sử alert ngay lập tức
+    if (state === "fire") {
+        refreshAlertList();
+    }
+
+    clearTimeout(stateDebounceTimer);
+    stateDebounceTimer = setTimeout(() => {
+        updateUI(state);
+    }, DEBOUNCE_DELAY);
+
+    logEvent(`⏳ Debouncing state change to "${state}"...`);
+};
+
+    
+    evtSource.onerror = function(err) {
+        logEvent("❌ SSE ERROR - connection lost");
+        evtSource.close();
+        
+        // Auto-reconnect với exponential backoff
+        if (reconnectAttempts < maxReconnectAttempts) {
+            reconnectAttempts++;
+            reconnectDelay = Math.min(reconnectDelay * 2, 30000); // Max 30s
+            
+            logEvent(`🔄 Reconnecting in ${reconnectDelay/1000}s...`);
+            setTimeout(connectSSE, reconnectDelay);
+        } else {
+            logEvent("❌ Max reconnect attempts reached");
+        }
+    };
+}
+
+// Start connection
+if (!safeBanner || !dangerBanner) {
+    logEvent("❌ Banner elements NOT FOUND!");
+} else {
+    logEvent("✅ Elements OK");
+    connectSSE();
+}
+
+// Keep-alive: Reload page if SSE dead for too long
+let lastMessageTime = Date.now();
+setInterval(() => {
+    const timeSinceLastMessage = Date.now() - lastMessageTime;
+    if (timeSinceLastMessage > 60000) { // 60 seconds
+        logEvent("⚠️ SSE inactive for 60s - reloading page...");
+        location.reload();
+    }
+}, 10000);
+
+// Update last message time on any SSE message
+if (evtSource) {
+    const originalOnMessage = evtSource.onmessage;
+    evtSource.onmessage = function(event) {
+        lastMessageTime = Date.now();
+        if (originalOnMessage) originalOnMessage(event);
+    };
+}
+
+// ===========================
+// PANEL SWITCHING
+// ===========================
+function showPanel(name) {
+    const userPanel = document.getElementById("panel-user");
+    const historyPanel = document.getElementById("panel-history");
+    const devicePanel = document.getElementById("panel-device");
+
+    // Ẩn tất cả panel
+    userPanel.style.display = "none";
+    historyPanel.style.display = "none";
+    devicePanel.style.display = "none";
+
+    // Hiện panel tương ứng
+    if (name === "user") userPanel.style.display = "block";
+    if (name === "history") historyPanel.style.display = "block";
+    if (name === "device") devicePanel.style.display = "block";
+}
+
+
+// ===========================
+// FILTER FUNCTIONS
+// ===========================
+function filterAlertHistory() {
+    const text = document.getElementById("alertSearch").value.toLowerCase();
+    const start = document.getElementById("dateStart").value;
+    const end = document.getElementById("dateEnd").value;
+
+    const rows = document.querySelectorAll(".history-row");
+
+    rows.forEach(row => {
+        const content = row.innerText.toLowerCase();
+        const dateText = row.querySelector(".created-at").innerText.trim();
+
+        // dateText dạng: "14:22:10 26/11/2025"
+        const parts = dateText.split(" ");
+        const dmy = parts[1];          // 26/11/2025
+        const [day, month, year] = dmy.split("/");
+
+        const isoDate = `${year}-${month}-${day}`; // 2025-11-26
+
+        let visible = true;
+
+        // Lọc theo text
+        if (text && !content.includes(text)) {
+            visible = false;
+        }
+
+        // Lọc theo ngày bắt đầu
+        if (start && isoDate < start) {
+            visible = false;
+        }
+
+        // Lọc theo ngày kết thúc
+        if (end && isoDate > end) {
+            visible = false;
+        }
+
+        row.style.display = visible ? "" : "none";
+    });
+}
+
+function filterUserList() {
+    const text = document.getElementById("userSearch").value.toLowerCase();
+    const rows = document.querySelectorAll("#userTable .user-row");
+
+    rows.forEach(row => {
+        const username = row.querySelector(".username").innerText.toLowerCase();
+        const email = row.querySelector(".email").innerText.toLowerCase();
+        const match = username.includes(text) || email.includes(text);
+        row.style.display = match ? "" : "none";
+    });
+}
+
+function toggleEdit(id, email=null, role=null) {
+    const row = document.getElementById("edit-" + id);
+    if (row.style.display === "none") {
+        row.style.display = "table-row";
+        if (email !== null) {
+            document.getElementById("email-" + id).value = email;
+            document.getElementById("role-" + id).value = role;
+        }
+        document.getElementById("can_view_cam_" + id).checked = (can_view_cam === true);
+    } else {
+        row.style.display = "none";
+    }
+}
+function refreshAlertList() {
+    fetch(window.location.href)  // Reload HTML của dashboard
+        .then(res => res.text())
+        .then(html => {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, "text/html");
+
+            const newList = doc.querySelector("#history-list");
+            const oldList = document.querySelector("#history-list");
+
+            if (newList && oldList) {
+                oldList.innerHTML = newList.innerHTML;
+                logEvent("🔄 ADMIN: Alert list refreshed");
+            } else {
+                logEvent("⚠️ ADMIN: history-list not found");
+            }
+        })
+        .catch(err => logEvent("❌ Error refresh alert: " + err));
+}
+
+function toggleDevice(device, state) {
+    console.log(`Toggle ${device}: ${state}`);
+    
+    let endpoint = '';
+    
+    if (device === 'light_buzzer') {
+        // Điều khiển Relay 1 (Đèn + Còi)
+        endpoint = state ? '/control/light/on/' : '/control/light/off/';
+    } else if (device === 'pump') {
+        // Điều khiển Relay 2 (Máy bơm)
+        endpoint = state ? '/api/control/pump/on/' : '/api/control/pump/off/';
+    }
+    
+    if (!endpoint) {
+        console.error('Unknown device:', device);
+        return;
+    }
+    
+    fetch(endpoint, {
+        method: "GET",  // ✅ ĐỔI THÀNH GET vì endpoint của bạn là GET
+        headers: {
+            "X-CSRFToken": "{{ csrf_token }}"
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        console.log(`✅ ${device}:`, data);
+        alert(`${device === 'light_buzzer' ? 'Đèn+Còi' : 'Máy bơm'} ${state ? 'BẬT' : 'TẮT'} thành công!`);
+    })
+    .catch(err => {
+        console.error('❌ Control error:', err);
+        alert('Lỗi điều khiển thiết bị!');
+    });
+}
+
+// THÊM VÀO PHẦN SCRIPT
+function manualControl(device, action) {
+    let endpoint = '';
+    let payload = {};
+    
+    if (device === 'light_buzzer') {
+        endpoint = '/control/light/';
+        if (action === 'on') {
+            endpoint += 'on/';
+        } else {
+            endpoint += 'off/';
+        }
+    } 
+    else if (device === 'pump') {
+        // Sử dụng API MQTT trực tiếp
+        fetch('/api/mqtt/control/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                topic: 'pccc/esp32/relay',
+                payload: { relay2: action === 'on' ? 1 : 0 }
+            })
+        })
+        .then(res => res.json())
+        .then(data => console.log('Pump control:', data));
+        return;
+    }
+    
+    fetch(endpoint)
+    .then(res => res.json())
+    .then(data => {
+        console.log(`${device} ${action}:`, data);
+        alert(`${device === 'light_buzzer' ? 'Đèn+Còi' : 'Máy bơm'} ${action === 'on' ? 'BẬT' : 'TẮT'} thành công!`);
+    });
+}
+
+
+// Thêm vào phần script trong dashboard_admin.html
+window.addEventListener('load', function() {
+    // Kiểm tra và fix camera nếu bị lệch
+    const camImg = document.querySelector('.cam-img');
+    const camView = document.querySelector('.cam-view');
+    
+    if (camImg && camView) {
+        console.log('📷 Camera found, checking dimensions...');
+        
+        // Force reset dimensions
+        camView.style.width = '100%';
+        camView.style.height = '100%';
+        camView.style.overflow = 'hidden';
+        
+        camImg.style.width = '100%';
+        camImg.style.height = '100%';
+        camImg.style.objectFit = 'cover';
+        camImg.style.position = 'absolute';
+        camImg.style.top = '0';
+        camImg.style.left = '0';
+        
+        // Log để debug
+        setTimeout(() => {
+            const imgWidth = camImg.clientWidth;
+            const parentWidth = camView.clientWidth;
+            console.log(`📏 Image width: ${imgWidth}px, Parent width: ${parentWidth}px`);
+            
+            if (imgWidth > parentWidth) {
+                console.log('⚠️ Image is wider than parent, forcing 100% width');
+                camImg.style.width = '100%';
+                camImg.style.maxWidth = '100%';
+            }
+        }, 1000);
+    }
+    
+    // Fix layout issues on resize
+    window.addEventListener('resize', function() {
+        const camImg = document.querySelector('.cam-img');
+        if (camImg) {
+            camImg.style.width = '100%';
+            camImg.style.height = '100%';
+        }
+    });
+});
+
+// ===========================
+// AUTO SYNC SWITCH STATE FROM ESP32
+// ===========================
+
+// Lưu reference đến các switches
+const lightBuzzerSwitch = document.querySelector('#panel-device input[onchange*="light_buzzer"]');
+const pumpSwitch = document.querySelector('#panel-device input[onchange*="pump"]');
+
+// Function để sync trạng thái từ server
+function syncDeviceStates() {
+    fetch('/api/system/status')
+        .then(res => res.json())
+        .then(data => {
+            const mqtt = data.mqtt || {};
+            
+            // ✅ Sync Relay 1 (Đèn + Còi)
+            if (lightBuzzerSwitch) {
+                const newState = mqtt.relay1_state || false;
+                if (lightBuzzerSwitch.checked !== newState) {
+                    lightBuzzerSwitch.checked = newState;
+                    console.log(`🔄 Sync Light+Buzzer: ${newState ? 'ON' : 'OFF'}`);
+                }
+            }
+            
+            // ✅ Sync Relay 2 (Máy bơm)
+            if (pumpSwitch) {
+                const newState = mqtt.relay2_state || false;
+                if (pumpSwitch.checked !== newState) {
+                    pumpSwitch.checked = newState;
+                    console.log(`🔄 Sync Pump: ${newState ? 'ON' : 'OFF'}`);
+                }
+            }
+        })
+        .catch(err => console.error('Sync error:', err));
+}
+
+// Sync mỗi 2 giây
+setInterval(syncDeviceStates, 2000);
+
+// Sync lần đầu sau 1 giây
+setTimeout(syncDeviceStates, 1000);
+
+// ===========================
+// IMPROVED toggleDevice - Thêm feedback
+// ===========================
+function toggleDevice(device, state) {
+    console.log(`🎛️ Toggle ${device}: ${state}`);
+    
+    let endpoint = '';
+    
+    if (device === 'light_buzzer') {
+        endpoint = state ? '/control/light/on/' : '/control/light/off/';
+    } else if (device === 'pump') {
+        endpoint = state ? '/api/control/pump/on/' : '/api/control/pump/off/';
+    }
+    
+    if (!endpoint) {
+        console.error('Unknown device:', device);
+        return;
+    }
+    
+    // Show loading state
+    const switchElem = event.target;
+    switchElem.disabled = true;
+    
+    fetch(endpoint, {
+        method: "GET",
+        headers: {
+            "X-CSRFToken": "{{ csrf_token }}"
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        console.log(`✅ ${device}:`, data);
+        
+        // Re-enable switch
+        switchElem.disabled = false;
+        
+        // Sync ngay để đảm bảo state đúng
+        setTimeout(syncDeviceStates, 500);
+    })
+    .catch(err => {
+        console.error('❌ Control error:', err);
+        
+        // Revert switch on error
+        switchElem.checked = !state;
+        switchElem.disabled = false;
+        
+        alert('Lỗi điều khiển thiết bị!');
+    });
+}
+
+</script>
+
+</body>
+</html>

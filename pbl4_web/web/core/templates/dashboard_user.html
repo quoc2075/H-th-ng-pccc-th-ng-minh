@@ -1,0 +1,188 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>PCCC — USER</title>
+    <link rel="stylesheet" href="{% static 'dashboard.css' %}">
+</head>
+
+<body>
+
+<!-- ================================
+     BẢNG 1 — FULL PAGE LAYOUT
+================================ -->
+<div class="page-layout">
+
+<!-- ================================
+     HÀNG 1 — APPBAR (15%)
+================================ -->
+<header class="appbar">
+    <h1>HỆ THỐNG GIÁM SÁT PCCC — USER</h1>
+
+    <nav class="top-menu"></nav>
+
+    <form action="{% url 'logout' %}">
+        <button class="btn">Đăng xuất</button>
+    </form>
+</header>
+
+<!-- ================================
+     HÀNG 2 — DASHBOARD (85%)
+================================ -->
+<main class="dashboard">
+
+    <!-- =======================================================
+         CỘT TRÁI (70%) — LEFT
+         CAMERA (80%) + BANNER (20%)
+    ======================================================= -->
+    <section class="left">
+
+        {% if request.user.can_view_cam %}
+        <!-- CAMERA (80%) -->
+        <div class="camera-wrapper">
+            <h2 class="section-title"> Camera giám sát</h2>
+
+            <article class="cam-card" style="height:100%;">
+
+                <div class="cam-view">
+                    <img src="{% url 'opencv_mjpeg_stream' %}">
+                </div>
+            </article>
+        </div>
+
+        {% else %}
+        <!-- KHÔNG CÓ QUYỀN XEM CAMERA -->
+        <div class="camera-wrapper">
+            <h2 class="section-title">📹 Camera giám sát</h2>
+
+            <article class="cam-card" style="text-align:center; padding:30px;">
+                <header>Camera cố định</header>
+                <p style="margin-top:20px; font-size:15px; color:#e74c3c; font-weight:bold;">
+                     Bạn không có quyền xem camera !
+                </p>
+            </article>
+        </div>
+        {% endif %}
+
+        <!-- BANNER (20%) -->
+        <div class="banner-wrapper">
+            <h2 class="section-title">🔥 Trạng thái hệ thống</h2>
+
+            <div class="safe-banner" id="safeBanner" {% if ai_status == 'danger' %}style="display:none"{% endif %}>
+                🟢 HỆ THỐNG AN TOÀN — AI không phát hiện cháy
+            </div>
+
+            <div class="danger-banner" id="dangerBanner" {% if ai_status == 'safe' %}style="display:none"{% endif %}>
+                🔥🔴 CẢNH BÁO CHÁY — AI phát hiện nguy hiểm!
+            </div>
+        </div>
+
+    </section>
+
+    <!-- =======================================================
+         CỘT PHẢI (30%) — RIGHT
+    ======================================================= -->
+    <aside class="right">
+
+        <div class="panel">
+            <h2 class="section-title">📜 Lịch sử cảnh báo</h2>
+
+            <div class="date-range">
+                <input type="date" id="dateStart" onchange="filterAlertHistory()">
+                <input type="date" id="dateEnd" onchange="filterAlertHistory()">
+            </div>
+
+            <input id="alertSearch"
+                   class="search-input"
+                   type="text"
+                   placeholder="Tìm theo loại hoặc nội dung..."
+                   oninput="filterAlertHistory()">
+
+            <button class="btn small" style="margin-bottom:10px;" onclick="refreshAlertList(true)">
+                 Làm mới
+            </button>
+
+            <div id="history-list" class="scrollable-list">
+                {% for a in alerts %}
+                <div class="alert-item history-row">
+                    <strong class="cls">{{ a.cls }}</strong> — {{ a.confidence|floatformat:2 }}
+                    <br>
+                    <small class="created-at">{{ a.created_at|date:"H:i:s d/m/Y" }}</small>
+                </div>
+                {% endfor %}
+            </div>
+
+        </div>
+
+    </aside>
+
+</main>
+
+</div> <!-- END PAGE LAYOUT -->
+
+<!-- ================================
+     ✓ SSE REALTIME
+================================ -->
+<script>
+const evtSource = new EventSource("{% url 'sse_alerts' %}");
+
+evtSource.onmessage = function(event) {
+    const state = event.data.trim();
+    const safe = document.getElementById("safeBanner");
+    const danger = document.getElementById("dangerBanner");
+
+    if (state === "fire") {
+        safe.style.display = "none";
+        danger.style.display = "block";
+
+        const audio = new Audio("{% static 'fire_alarm.mp3' %}");
+        audio.play();
+
+        refreshAlertList();
+    } 
+    else {
+        danger.style.display = "none";
+        safe.style.display = "block";
+    }
+};
+
+function filterAlertHistory() {
+    const text = document.getElementById("alertSearch").value.toLowerCase();
+    const start = document.getElementById("dateStart").value;
+    const end = document.getElementById("dateEnd").value;
+    const rows = document.querySelectorAll(".history-row");
+
+    rows.forEach(row => {
+        const content = row.innerText.toLowerCase();
+        const dateText = row.querySelector(".created-at").innerText.trim();
+
+        const parts = dateText.split(" ");
+        const dmy = parts[1];
+        const [day, month, year] = dmy.split("/");
+        const isoDate = `${year}-${month}-${day}`;
+
+        let show = true;
+
+        if (text && !content.includes(text)) show = false;
+        if (start && isoDate < start) show = false;
+        if (end && isoDate > end) show = false;
+
+        row.style.display = show ? "" : "none";
+    });
+}
+
+function refreshAlertList() {
+    fetch("{% url 'dashboard' %}")  
+        .then(res => res.text())
+        .then(html => {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, "text/html");
+            document.querySelector("#history-list").innerHTML =
+                doc.querySelector("#history-list").innerHTML;
+        });
+}
+</script>
+
+</body>
+</html>

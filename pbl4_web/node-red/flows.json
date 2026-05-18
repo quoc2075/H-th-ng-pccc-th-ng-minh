@@ -1,0 +1,635 @@
+[
+    {
+        "id": "54920bdd45f23848",
+        "type": "tab",
+        "label": "PCCC IoT AI System - FIXED",
+        "disabled": false,
+        "info": "Hệ thống chữa cháy tự động với AI - Relay1: Đèn+Còi, Relay2: Máy bơm"
+    },
+    {
+        "id": "07c6cd19f4a614a2",
+        "type": "mqtt in",
+        "z": "54920bdd45f23848",
+        "name": "📊 ESP32 Sensors",
+        "topic": "pccc/esp32/sensors",
+        "qos": "1",
+        "datatype": "json",
+        "broker": "5a9bc15bccad51a5",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 180,
+        "y": 140,
+        "wires": [
+            [
+                "c1b61e4a975396ef",
+                "c968889456a42e4b"
+            ]
+        ]
+    },
+    {
+        "id": "3b19f9657b25677f",
+        "type": "mqtt in",
+        "z": "54920bdd45f23848",
+        "name": "💓 ESP32 Status",
+        "topic": "pccc/esp32/status",
+        "qos": "1",
+        "datatype": "json",
+        "broker": "5a9bc15bccad51a5",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 190,
+        "y": 40,
+        "wires": [
+            [
+                "7d6f910afb661bfd"
+            ]
+        ]
+    },
+    {
+        "id": "eb72218ca09ed4ab",
+        "type": "mqtt in",
+        "z": "54920bdd45f23848",
+        "name": "🔥 AI Alert từ Django",
+        "topic": "pccc/alert",
+        "qos": "1",
+        "datatype": "json",
+        "broker": "5a9bc15bccad51a5",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 180,
+        "y": 280,
+        "wires": [
+            [
+                "9b78d50c3a3c9aef",
+                "7e6d667da16ffb59"
+            ]
+        ]
+    },
+    {
+        "id": "c1b61e4a975396ef",
+        "type": "function",
+        "z": "54920bdd45f23848",
+        "name": "Xử lý cảm biến",
+        "func": "// ✅ FORMAT MỚI: {smoke, gas, relay1, relay2, servo_pan, servo_tilt, timestamp}\n\nlet data = msg.payload;\n\n// Lưu vào context để tracking\ncontext.set('smoke', data.smoke || 0);\ncontext.set('gas', data.gas || 0);\ncontext.set('relay1', data.relay1 || 0);  // ✅ Đèn + Còi\ncontext.set('relay2', data.relay2 || 0);  // ✅ Máy bơm\ncontext.set('servo_pan', data.servo_pan || 90);\ncontext.set('servo_tilt', data.servo_tilt || 90);\n\n// Kiểm tra ngưỡng nguy hiểm\nlet alert = false;\nlet alertMsg = [];\n\nif (data.smoke > 1500) {\n    alert = true;\n    alertMsg.push('Khói vượt ngưỡng: ' + data.smoke);\n}\n\nif (data.gas > 1500) {\n    alert = true;\n    alertMsg.push('Gas vượt ngưỡng: ' + data.gas);\n}\n\nif (alert) {\n    // ✅ Bật Relay 1 (Đèn + Còi) khi có cảnh báo từ sensor\n    let relay1Msg = {\n        payload: {\n            relay1: 1,\n            timestamp: Date.now()\n        },\n        topic: 'pccc/esp32/relay'\n    };\n    \n    msg.payload = {\n        alert: true,\n        message: alertMsg.join(', '),\n        sensors: data,\n        timestamp: new Date().toISOString()\n    };\n    \n    return [msg, null, relay1Msg];\n} else {\n    msg.payload = {\n        alert: false,\n        sensors: data,\n        timestamp: new Date().toISOString()\n    };\n    return [null, msg, null];\n}",
+        "outputs": 3,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 450,
+        "y": 140,
+        "wires": [
+            [
+                "9fe1de78491bcd83"
+            ],
+            [
+                "4b3105f9451806cd"
+            ],
+            [
+                "a7208c9694d9a293"
+            ]
+        ]
+    },
+    {
+        "id": "9b78d50c3a3c9aef",
+        "type": "function",
+        "z": "54920bdd45f23848",
+        "name": "Xử lý AI Detection",
+        "func": "// ✅ XỬ LÝ FORMAT MỚI: {type: \"fire\"/\"smoke\"/\"safe\", conf, timestamp}\n\nlet data = msg.payload;\n\nif (data.type === \"fire\" || data.type === \"smoke\") {\n    // AI phát hiện lửa/khói\n    node.warn(`🔥 AI DETECTED: ${data.type} (${data.conf})`);\n    \n    // ✅ Bật Relay 1 (Đèn + Còi)\n    let relay1Msg = {\n        payload: {\n            relay1: 1,\n            timestamp: Date.now()\n        },\n        topic: 'pccc/esp32/relay'\n    };\n    \n    msg.payload = {\n        fire_detected: true,\n        type: data.type,\n        confidence: data.conf,\n        timestamp: new Date().toISOString()\n    };\n    \n    context.set('last_detection', msg.payload);\n    context.set('ai_fire_active', true);\n    \n    // Output: [servo_control, relay1_control, pump_control]\n    return [msg, relay1Msg, msg];\n    \n} else if (data.type === \"safe\") {\n    // AI không phát hiện nguy hiểm\n    node.status({fill:\"green\", shape:\"dot\", text:\"Safe\"});\n    \n    // ✅ Tắt Relay 1 (Đèn + Còi)\n    let relay1Msg = {\n        payload: {\n            relay1: 0,\n            timestamp: Date.now()\n        },\n        topic: 'pccc/esp32/relay'\n    };\n    \n    context.set('ai_fire_active', false);\n    \n    return [null, relay1Msg, null];\n}\n\nreturn null;",
+        "outputs": 3,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 450,
+        "y": 320,
+        "wires": [
+            [
+                "8247a9ad260f9e5c"
+            ],
+            [
+                "a7208c9694d9a293"
+            ],
+            [
+                "1e4222171040e5ab"
+            ]
+        ]
+    },
+    {
+        "id": "8247a9ad260f9e5c",
+        "type": "function",
+        "z": "54920bdd45f23848",
+        "name": "Tính toán góc Servo",
+        "func": "// ✅ SERVO ĐƯỢC ĐIỀU KHIỂN TỰ ĐỘNG BỞI DJANGO AI\n// Node-RED chỉ forward command từ Django\n\nlet detection = msg.payload;\n\nif (detection.fire_detected) {\n    // Kiểm tra xem có đang phun không\n    let isSpraying = context.get('is_spraying') || false;\n    \n    if (!isSpraying) {\n        // Gửi lệnh điều khiển servo\n        msg.payload = {\n            servo_pan: 90,  // Default, Django AI sẽ điều khiển\n            action: 'move',\n            timestamp: new Date().toISOString()\n        };\n        \n        context.set('is_spraying', true);\n        context.set('spray_start', Date.now());\n        \n        return msg;\n    } else {\n        node.warn('Đang trong quá trình phun nước');\n        return null;\n    }\n} else {\n    return null;\n}",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 720,
+        "y": 280,
+        "wires": [
+            [
+                "9ab265fb2b4fb461"
+            ]
+        ]
+    },
+    {
+        "id": "9ab265fb2b4fb461",
+        "type": "mqtt out",
+        "z": "54920bdd45f23848",
+        "name": "🎯 Gửi góc Servo đến ESP32",
+        "topic": "pccc/esp32/servo",
+        "qos": "1",
+        "retain": "false",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "5a9bc15bccad51a5",
+        "x": 1010,
+        "y": 280,
+        "wires": []
+    },
+    {
+        "id": "1e4222171040e5ab",
+        "type": "function",
+        "z": "54920bdd45f23848",
+        "name": "Kích hoạt máy bơm",
+        "func": "// ✅ Bật máy bơm (Relay 2)\nmsg.payload = {\n    relay2: 1,\n    timestamp: new Date().toISOString()\n};\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 710,
+        "y": 360,
+        "wires": [
+            [
+                "a7208c9694d9a293",
+                "355bd8b21646a918"
+            ]
+        ]
+    },
+    {
+        "id": "a7208c9694d9a293",
+        "type": "mqtt out",
+        "z": "54920bdd45f23848",
+        "name": "⚡ Điều khiển Relay",
+        "topic": "pccc/esp32/relay",
+        "qos": "1",
+        "retain": "false",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "5a9bc15bccad51a5",
+        "x": 720,
+        "y": 540,
+        "wires": []
+    },
+    {
+        "id": "355bd8b21646a918",
+        "type": "delay",
+        "z": "54920bdd45f23848",
+        "name": "Đợi 5s",
+        "pauseType": "delay",
+        "timeout": "5",
+        "timeoutUnits": "seconds",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 940,
+        "y": 360,
+        "wires": [
+            [
+                "50afedea60b27efc"
+            ]
+        ]
+    },
+    {
+        "id": "50afedea60b27efc",
+        "type": "function",
+        "z": "54920bdd45f23848",
+        "name": "Quay về vị trí ban đầu",
+        "func": "// Quay servo về vị trí ban đầu (90 độ)\nmsg.payload = {\n    servo_pan: 0,  // ✅ Django AI điều khiển về 0\n    action: 'return_home',\n    timestamp: new Date().toISOString()\n};\n\n// ✅ Tắt máy bơm (Relay 2)\nlet pumpMsg = {\n    payload: {\n        relay2: 0,\n        timestamp: new Date().toISOString()\n    },\n    topic: 'pccc/esp32/relay'\n};\n\n// Reset trạng thái\ncontext.set('is_spraying', false);\n\nreturn [msg, pumpMsg];",
+        "outputs": 2,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 730,
+        "y": 420,
+        "wires": [
+            [
+                "9ab265fb2b4fb461"
+            ],
+            [
+                "a7208c9694d9a293"
+            ]
+        ]
+    },
+    {
+        "id": "9fe1de78491bcd83",
+        "type": "http request",
+        "z": "54920bdd45f23848",
+        "name": "Gửi cảnh báo Django",
+        "method": "POST",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "http://localhost:8000/api/pccc/alert",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [
+            {
+                "keyType": "Content-Type",
+                "keyValue": "",
+                "valueType": "application/json",
+                "valueValue": ""
+            }
+        ],
+        "x": 740,
+        "y": 100,
+        "wires": [
+            [
+                "bbe00b416ad5fe6a"
+            ]
+        ]
+    },
+    {
+        "id": "4b3105f9451806cd",
+        "type": "http request",
+        "z": "54920bdd45f23848",
+        "name": "Gửi dữ liệu bình thường",
+        "method": "POST",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "http://localhost:8000/api/pccc/data",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [
+            {
+                "keyType": "Content-Type",
+                "keyValue": "",
+                "valueType": "application/json",
+                "valueValue": ""
+            }
+        ],
+        "x": 740,
+        "y": 160,
+        "wires": [
+            [
+                "bbe00b416ad5fe6a"
+            ]
+        ]
+    },
+    {
+        "id": "7d6f910afb661bfd",
+        "type": "function",
+        "z": "54920bdd45f23848",
+        "name": "Kiểm tra trạng thái hệ thống",
+        "func": "// Kiểm tra trạng thái hoạt động của ESP32\nlet status = msg.payload;\n\n// Lưu thời gian nhận được status\nlet lastSeen = context.get('esp32_last_seen') || [];\nlastSeen.push(Date.now());\n\n// Chỉ giữ 10 lần gần nhất\nif (lastSeen.length > 10) {\n    lastSeen.shift();\n}\ncontext.set('esp32_last_seen', lastSeen);\n\n// Kiểm tra kết nối ổn định\nlet isStable = true;\nif (lastSeen.length >= 2) {\n    let intervals = [];\n    for (let i = 1; i < lastSeen.length; i++) {\n        intervals.push(lastSeen[i] - lastSeen[i-1]);\n    }\n    let avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length;\n    \n    // Nếu khoảng cách trung bình > 30s thì không ổn định\n    if (avgInterval > 30000) {\n        isStable = false;\n    }\n}\n\nmsg.payload = {\n    esp32_status: status,\n    connection_stable: isStable,\n    last_seen: lastSeen[lastSeen.length - 1],\n    avg_interval: lastSeen.length >= 2 ? \n        Math.round((lastSeen[lastSeen.length - 1] - lastSeen[0]) / (lastSeen.length - 1) / 1000) : 0,\n    timestamp: new Date().toISOString()\n};\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 440,
+        "y": 40,
+        "wires": [
+            [
+                "d5eeabccb43ddd9a"
+            ]
+        ]
+    },
+    {
+        "id": "bbe00b416ad5fe6a",
+        "type": "debug",
+        "z": "54920bdd45f23848",
+        "name": "Django Response",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1020,
+        "y": 120,
+        "wires": []
+    },
+    {
+        "id": "c968889456a42e4b",
+        "type": "debug",
+        "z": "54920bdd45f23848",
+        "name": "📊 Sensors Data",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload.smoke",
+        "statusType": "auto",
+        "x": 450,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "7e6d667da16ffb59",
+        "type": "debug",
+        "z": "54920bdd45f23848",
+        "name": "🔥 AI Detection",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload.type",
+        "statusType": "auto",
+        "x": 460,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "d5eeabccb43ddd9a",
+        "type": "debug",
+        "z": "54920bdd45f23848",
+        "name": "💓 System Status",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload.connection_stable",
+        "statusType": "auto",
+        "x": 740,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "092d2a119136bdaf",
+        "type": "inject",
+        "z": "54920bdd45f23848",
+        "name": "TEST: Fire Alert",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "pccc/alert",
+        "payload": "{\"type\":\"fire\",\"conf\":0.95,\"timestamp\":1234567890}",
+        "payloadType": "json",
+        "x": 170,
+        "y": 340,
+        "wires": [
+            [
+                "9b78d50c3a3c9aef"
+            ]
+        ]
+    },
+    {
+        "id": "4b8f045642800df8",
+        "type": "inject",
+        "z": "54920bdd45f23848",
+        "name": "TEST: Safe Alert",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "pccc/alert",
+        "payload": "{\"type\":\"safe\"}",
+        "payloadType": "json",
+        "x": 170,
+        "y": 400,
+        "wires": [
+            [
+                "9b78d50c3a3c9aef"
+            ]
+        ]
+    },
+    {
+        "id": "e963181c646f19d1",
+        "type": "inject",
+        "z": "54920bdd45f23848",
+        "name": "TEST: High Sensors",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "pccc/esp32/sensors",
+        "payload": "{\"smoke\":1600,\"gas\":1700,\"relay1\":0,\"relay2\":0,\"servo_pan\":90,\"timestamp\":1234567890}",
+        "payloadType": "json",
+        "x": 200,
+        "y": 100,
+        "wires": [
+            [
+                "c1b61e4a975396ef"
+            ]
+        ]
+    },
+    {
+        "id": "a3f495266bdd670f",
+        "type": "inject",
+        "z": "54920bdd45f23848",
+        "name": "TEST: Relay1 ON",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "pccc/esp32/relay",
+        "payload": "{\"relay1\":1}",
+        "payloadType": "json",
+        "x": 210,
+        "y": 480,
+        "wires": [
+            [
+                "a7208c9694d9a293"
+            ]
+        ]
+    },
+    {
+        "id": "d1c8c844b3661a22",
+        "type": "inject",
+        "z": "54920bdd45f23848",
+        "name": "TEST: Relay1 OFF",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "pccc/esp32/relay",
+        "payload": "{\"relay1\":0}",
+        "payloadType": "json",
+        "x": 210,
+        "y": 520,
+        "wires": [
+            [
+                "a7208c9694d9a293"
+            ]
+        ]
+    },
+    {
+        "id": "5391eb877dd6bddf",
+        "type": "inject",
+        "z": "54920bdd45f23848",
+        "name": "TEST: Relay2 ON",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "pccc/esp32/relay",
+        "payload": "{\"relay2\":1}",
+        "payloadType": "json",
+        "x": 210,
+        "y": 560,
+        "wires": [
+            [
+                "a7208c9694d9a293"
+            ]
+        ]
+    },
+    {
+        "id": "37a576c28b7c0dbf",
+        "type": "inject",
+        "z": "54920bdd45f23848",
+        "name": "TEST: Relay2 OFF",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "pccc/esp32/relay",
+        "payload": "{\"relay2\":0}",
+        "payloadType": "json",
+        "x": 210,
+        "y": 600,
+        "wires": [
+            [
+                "a7208c9694d9a293"
+            ]
+        ]
+    },
+    {
+        "id": "5a9bc15bccad51a5",
+        "type": "mqtt-broker",
+        "name": "Bống",
+        "broker": "localhost",
+        "port": 1883,
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": 4,
+        "keepalive": 60,
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    }
+]

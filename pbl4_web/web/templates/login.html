@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Đăng nhập | Hệ thống PCCC AI</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="login-body">
+  <div class="login-container glass">
+    <h1>🔥 HỆ THỐNG GIÁM SÁT CHÁY AI</h1>
+    <form method="post" action="/login">
+      <div class="input-group">
+        <input type="text" name="username" required>
+        <label>Tên đăng nhập</label>
+      </div>
+      <div class="input-group">
+        <input type="password" name="password" required>
+        <label>Mật khẩu</label>
+      </div>
+      <button type="submit">Đăng nhập</button>
+      {% if error %}
+      <p class="error">{{ error }}</p>
+      {% endif %}
+    </form>
+  </div>
+</body>
+</html>

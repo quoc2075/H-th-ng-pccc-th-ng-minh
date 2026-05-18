@@ -1,0 +1,343 @@
+/* ====== GLOBAL ====== */
+body {
+    margin: 0;
+    background: #f3f6fa;
+    font-family: "Inter", system-ui, sans-serif;
+    height: 100vh;
+}
+
+h1, h2, h3 {
+    margin: 0;
+}
+
+/* ====== HEADER ====== */
+.appbar {
+    background: #1f2d3d;
+    padding: 16px 22px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: white;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.25);
+}
+
+.appbar h1 {
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+/* ====== BUTTON ====== */
+.btn {
+    background: linear-gradient(135deg, #2980b9, #3498db);
+    padding: 10px 16px;
+    border: none;
+    border-radius: 8px;
+    color: white;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: 0.18s ease;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 14px rgba(0,0,0,0.22);
+}
+
+.btn.small {
+    padding: 6px 12px;
+    font-size: 13px;
+}
+
+/* ==========================================================================
+   📌 BẢNG 1 — Layout full page (Appbar 15% + Dashboard 85%)
+   ========================================================================== */
+.page-layout {
+    display: grid;
+    height: 100vh;
+    grid-template-rows: 10% 90%;
+}
+
+/* ==========================================================================
+   📌 BẢNG 2 — Dashboard chia 2 cột (Left 70% + Right 30%)
+   ========================================================================== */
+.dashboard {
+    display: grid !important;
+    grid-template-columns: 70% 30%;
+    height: 100%;
+    padding: 22px;
+    gap: 22px;
+    box-sizing: border-box;
+}
+
+/* ==========================================================================
+   📌 BẢNG 3 — Left chia 2 hàng (Camera 80% + Banner 20%)
+   ========================================================================== */
+.left {
+    display: grid;
+    grid-template-rows: 85% 15%;
+    gap: 20px;
+    height: 100%;
+}
+
+/* ====== CAMERA WRAPPER ====== */
+.camera-wrapper {
+    background: white;
+    padding: 18px;
+    border-radius: 16px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.10);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* ====== BANNER WRAPPER ====== */
+.banner-wrapper {
+    background: white;
+    padding: 18px;
+    border-radius: 16px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.10);
+}
+
+/* ====== RIGHT PANEL ====== */
+.right, 
+.scrollable-list, 
+#history-list {
+    overflow-x: hidden !important;
+    width: 100% !important;
+}
+
+/* Đảm bảo phần tử con không bị tràn */
+.alert-item {
+    max-width: 100% !important;
+    overflow-wrap: break-word;
+}
+/* ====== CARD ====== */
+.cam-card, .panel {
+    background: white;
+    border-radius: 16px;
+    padding: 18px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.10);
+    animation: fadeIn 0.4s ease;
+}
+
+.section-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: #2c3e50;
+}
+
+/* ====== CAMERA VIEW ====== */
+/* ===== CAMERA VIEW - FIX LỆCH PHẢI ===== */
+.cam-card {
+    flex: 1;
+    padding: 0;
+    border-radius: 16px;
+    overflow: hidden;
+    width: 100%; /* 🔥 THÊM DÒNG NÀY */
+    height: 100%;
+    box-sizing: border-box; /* 🔥 THÊM DÒNG NÀY */
+}
+
+.cam-view {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background: black;
+    overflow: hidden;
+}
+
+/* 🔥 FIX TRIỆT ĐỂ - KHÔNG ĐỂ ẢNH TRÀN RA NGOÀI */
+.cam-view img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100% !important; /* 🔥 QUAN TRỌNG: ép width 100% */
+    height: 100% !important; /* 🔥 QUAN TRỌNG: ép height 100% */
+    object-fit: cover;
+    display: block;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* 🔥 FIX LAYOUT CỘT TRÁI */
+.left {
+    display: grid;
+    grid-template-rows: 85% 15%;
+    gap: 20px;
+    height: 100%;
+    width: 100%; /* 🔥 THÊM */
+    box-sizing: border-box; /* 🔥 THÊM */
+}
+
+.camera-wrapper {
+    background: white;
+    padding: 18px;
+    border-radius: 16px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.10);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    width: 100%; /* 🔥 THÊM */
+    height: 100%;
+    box-sizing: border-box; /* 🔥 THÊM */
+}
+
+
+
+/* ====== ALERT BANNERS ====== */
+.safe-banner, .danger-banner {
+    padding: 12px;
+    border-radius: 10px;
+    font-weight: 600;
+    text-align: center;
+    margin-bottom: 15px;
+    font-size: 15px;
+}
+
+.safe-banner {
+    background: #2ecc71;
+    color: white;
+    box-shadow: 0 3px 10px rgba(46, 204, 113, 0.25);
+}
+
+.danger-banner {
+    background: #e74c3c;
+    color: white;
+    box-shadow: 0 3px 10px rgba(231, 76, 60, 0.3);
+    animation: fireBlink 0.8s infinite;
+}
+
+/* FIRE BLINK ANIM */
+@keyframes fireBlink {
+    0% { opacity: 1; }
+    50% { opacity: 0.6; }
+    100% { opacity: 1; }
+}
+
+/* ====== ALERT LIST ====== */
+.alert-item {
+    background: white;
+    padding: 12px;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    font-size: 14px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+    border-left: 4px solid #3498db;
+}
+
+/* DATE RANGE FILTER */
+.date-range {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.date-range input[type="date"] {
+    flex: 1;
+    padding: 6px 8px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    font-size: 13px;
+    box-sizing: border-box;
+}
+
+/* ====== INPUTS ====== */
+.search-input, .input, select {
+    width: 100%;
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid #dcdcdc;
+    margin-bottom: 10px;
+    font-size: 14px;
+    background: #f9f9f9;
+}
+
+/* ====== USER TABLE ====== */
+.data {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.data th {
+    background: #34495e;
+    color: white;
+    padding: 10px;
+    text-align: left;
+    font-size: 14px;
+    border-radius: 6px 6px 0 0;
+}
+
+.data td {
+    padding: 12px;
+    background: white;
+    border-bottom: 1px solid #ececec;
+    font-size: 14px;
+}
+
+/* Fade animation */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+/* ====== DEVICE CONTROL UI ====== */
+
+.device-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid #e3e3e3;
+    font-size: 16px;
+}
+
+.device-label {
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+/* TOGGLE SWITCH */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 55px;
+    height: 28px;
+}
+
+.switch input { 
+    display: none;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    background-color: #ccc;
+    border-radius: 34px;
+    top: 0; left: 0; right: 0; bottom: 0;
+    transition: 0.3s;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 22px;
+    width: 22px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    border-radius: 50%;
+    transition: 0.3s;
+}
+
+/* ON STATE */
+input:checked + .slider {
+    background-color: #2ecc71;
+}
+
+input:checked + .slider:before {
+    transform: translateX(26px);
+}
+
